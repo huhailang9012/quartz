@@ -46,9 +46,9 @@ public class ScheduleUtils {
         	//构建job信息
             JobDetail jobDetail = JobBuilder.newJob(ScheduleTask.class).withIdentity(getJobKey(scheduleJob.getJobId())).build();
 
-            //表达式调度构建器
+            //表达式调度构建器(错过触发时间，马上运行一次)
             CronScheduleBuilder scheduleBuilder = CronScheduleBuilder.cronSchedule(scheduleJob.getCronExpression())
-            		.withMisfireHandlingInstructionDoNothing();
+                    .withMisfireHandlingInstructionFireAndProceed();
 
             //按新的cronExpression表达式构建一个新的trigger
             CronTrigger trigger = TriggerBuilder.newTrigger().withIdentity(getTriggerKey(scheduleJob.getJobId())).withSchedule(scheduleBuilder).build();
@@ -72,22 +72,26 @@ public class ScheduleUtils {
      */
     public static void updateScheduleJob(Scheduler scheduler, ScheduleJob scheduleJob) {
         try {
-            TriggerKey triggerKey = getTriggerKey(scheduleJob.getJobId());
+            long jobId = scheduleJob.getJobId();
+            JobKey jobKey = getJobKey(jobId);
+            JobDetail jobDetail = scheduler.getJobDetail(jobKey);
+            if(jobDetail == null ){
+                createScheduleJob(scheduler,scheduleJob);
+                return;
+            }
 
-            //表达式调度构建器
+            TriggerKey triggerKey = getTriggerKey(jobId);
+
+            //表达式调度构建器(错过触发时间，马上运行一次)
             CronScheduleBuilder scheduleBuilder = CronScheduleBuilder.cronSchedule(scheduleJob.getCronExpression())
-            		.withMisfireHandlingInstructionDoNothing();
+            		.withMisfireHandlingInstructionFireAndProceed();
 
-            CronTrigger trigger = getCronTrigger(scheduler, scheduleJob.getJobId());
-            
-            //按新的cronExpression表达式重新构建trigger
+            CronTrigger trigger = getCronTrigger(scheduler, jobId);
+                //按新的cronExpression表达式重新构建trigger
             trigger = trigger.getTriggerBuilder().withIdentity(triggerKey).withSchedule(scheduleBuilder).build();
-            
             //参数
             trigger.getJobDataMap().put(ScheduleJob.JOB_PARAM_KEY, new Gson().toJson(scheduleJob));
-            
             scheduler.rescheduleJob(triggerKey, trigger);
-            
             //暂停任务
             if(scheduleJob.getStatus() == Constant.ScheduleStatus.PAUSE.getValue()){
             	pauseJob(scheduler, scheduleJob.getJobId());

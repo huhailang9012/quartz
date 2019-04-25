@@ -1,8 +1,8 @@
 package cn.comtom.app.standard.component.quartz.utils;
 
 import cn.comtom.app.standard.component.quartz.model.dbo.ScheduleJob;
-import cn.comtom.app.standard.component.quartz.service.ScheduleJobLogService;
 import cn.comtom.app.standard.component.quartz.model.dbo.ScheduleJobLog;
+import cn.comtom.app.standard.component.quartz.service.ScheduleJobLogService;
 import com.google.gson.Gson;
 import org.apache.commons.lang3.StringUtils;
 import org.quartz.JobExecutionContext;
@@ -22,6 +22,8 @@ import java.util.concurrent.Future;
  * @author huhailang
  */
 public class ScheduleTask extends QuartzJobBean {
+    public static final String APPLICATION_CONTEXT_KEY = "applicationContextKey";
+
     private Logger logger = LoggerFactory.getLogger(getClass());
     private ExecutorService service = Executors.newSingleThreadExecutor();
 
@@ -30,8 +32,15 @@ public class ScheduleTask extends QuartzJobBean {
         String jsonJob = context.getMergedJobDataMap().getString(ScheduleJob.JOB_PARAM_KEY);
         ScheduleJob scheduleJob = new Gson().fromJson(jsonJob, ScheduleJob.class);
 
+    /*
+        //获取JobExecutionContext中的service对象
+        SchedulerContext schCtx = context.getScheduler().getContext();
+        //获取Spring中的上下文
+        ApplicationContext appCtx = (ApplicationContext)schCtx.get(APPLICATION_CONTEXT_KEY);
+        */
+
         //获取spring bean
-        ScheduleJobLogService scheduleJobLogService = (ScheduleJobLogService) SpringContextUtils.getBean("scheduleJobLogService");
+        ScheduleJobLogService scheduleJobLogService = ApplicationContextUtils.getBean("scheduleJobLogService",ScheduleJobLogService.class);
 
         //数据库保存执行记录
         ScheduleJobLog log = new ScheduleJobLog();

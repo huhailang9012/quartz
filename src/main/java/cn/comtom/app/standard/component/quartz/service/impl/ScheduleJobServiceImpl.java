@@ -1,11 +1,11 @@
 package cn.comtom.app.standard.component.quartz.service.impl;
 
+import cn.comtom.app.standard.component.quartz.config.QuartzDataSourceConfig;
 import cn.comtom.app.standard.component.quartz.dao.ScheduleJobDao;
 import cn.comtom.app.standard.component.quartz.model.Constant;
 import cn.comtom.app.standard.component.quartz.model.dbo.ScheduleJob;
 import cn.comtom.app.standard.component.quartz.service.ScheduleJobService;
 import cn.comtom.app.standard.component.quartz.utils.ScheduleUtils;
-import org.quartz.CronTrigger;
 import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,28 +20,34 @@ import java.util.List;
 @Service("scheduleJobService")
 public class ScheduleJobServiceImpl implements ScheduleJobService {
 
-	@Autowired
-    private Scheduler scheduler;
+	private static final String TRANSATION_MANAGER = QuartzDataSourceConfig.QUARTZ_TRANSACTION_MANAGER;
+
+	private final Scheduler scheduler;
+
+	private final ScheduleJobDao scheduleJobDao;
 
 	@Autowired
-	private ScheduleJobDao scheduleJobDao;
-
-	/**
-	 * 项目启动时，初始化定时器
-	 */
-	//@PostConstruct
-	public void init(){
-		List<ScheduleJob> scheduleJobList = scheduleJobDao.listAll();
-		for(ScheduleJob scheduleJob : scheduleJobList){
-			CronTrigger cronTrigger = ScheduleUtils.getCronTrigger(scheduler, scheduleJob.getJobId());
-            //如果不存在，则创建
-            if(cronTrigger == null) {
-                ScheduleUtils.createScheduleJob(scheduler, scheduleJob);
-            }else {
-                ScheduleUtils.updateScheduleJob(scheduler, scheduleJob);
-            }
-		}
+	public ScheduleJobServiceImpl(Scheduler scheduler, ScheduleJobDao scheduleJobDao) {
+		this.scheduler = scheduler;
+		this.scheduleJobDao = scheduleJobDao;
 	}
+
+//	/**
+//	 * 项目启动时，初始化定时器
+//	 */
+//	//@PostConstruct
+//	public void init(){
+//		List<ScheduleJob> scheduleJobList = scheduleJobDao.listAll();
+//		for(ScheduleJob scheduleJob : scheduleJobList){
+//			CronTrigger cronTrigger = ScheduleUtils.getCronTrigger(scheduler, scheduleJob.getJobId());
+//            //如果不存在，则创建
+//            if(cronTrigger == null) {
+//                ScheduleUtils.createScheduleJob(scheduler, scheduleJob);
+//            }else {
+//                ScheduleUtils.updateScheduleJob(scheduler, scheduleJob);
+//            }
+//		}
+//	}
 	
 	@Override
 	public ScheduleJob queryObject(Long jobId) {
@@ -59,7 +65,7 @@ public class ScheduleJobServiceImpl implements ScheduleJobService {
 	}
 
 	@Override
-	@Transactional
+	@Transactional(TRANSATION_MANAGER)
 	public void save(ScheduleJob scheduleJob) {
 		scheduleJob.setCreateTime(new Date());
 		scheduleJob.setStatus(Constant.ScheduleStatus.NORMAL.getValue());
@@ -68,7 +74,7 @@ public class ScheduleJobServiceImpl implements ScheduleJobService {
     }
 	
 	@Override
-	@Transactional
+	@Transactional(TRANSATION_MANAGER)
 	public void update(ScheduleJob scheduleJob) {
         ScheduleUtils.updateScheduleJob(scheduler, scheduleJob);
 		scheduleJobDao.update(scheduleJob);
@@ -76,13 +82,13 @@ public class ScheduleJobServiceImpl implements ScheduleJobService {
 
 
 	@Override
-	@Transactional
+	@Transactional(TRANSATION_MANAGER)
     public void run(Long jobId) {
 		ScheduleUtils.run(scheduler, queryObject(jobId));
     }
 
 	@Override
-	@Transactional
+	@Transactional(TRANSATION_MANAGER)
     public void pause(Long jobId) {
 		ScheduleUtils.pauseJob(scheduler, jobId);
 		ScheduleJob entity = new ScheduleJob();
@@ -92,7 +98,7 @@ public class ScheduleJobServiceImpl implements ScheduleJobService {
     }
 
 	@Override
-	@Transactional
+	@Transactional(TRANSATION_MANAGER)
     public void resume(Long jobId) {
 
 		ScheduleUtils.resumeJob(scheduler, jobId);
@@ -103,6 +109,7 @@ public class ScheduleJobServiceImpl implements ScheduleJobService {
     }
 
 	@Override
+	@Transactional(TRANSATION_MANAGER)
 	public void delete(Long jobId) {
 		ScheduleUtils.deleteScheduleJob(scheduler,jobId);
 		ScheduleJob entity = new ScheduleJob();

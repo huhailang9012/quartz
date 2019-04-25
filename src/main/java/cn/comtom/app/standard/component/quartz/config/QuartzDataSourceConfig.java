@@ -2,7 +2,7 @@ package cn.comtom.app.standard.component.quartz.config;
 
 import cn.comtom.app.standard.component.quartz.mapper.common.JobMapper;
 import com.zaxxer.hikari.HikariDataSource;
-import org.apache.ibatis.logging.stdout.StdOutImpl;
+import org.apache.ibatis.logging.slf4j.Slf4jImpl;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -15,6 +15,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import tk.mybatis.mapper.entity.Config;
 import tk.mybatis.mapper.mapperhelper.MapperHelper;
 import tk.mybatis.spring.annotation.MapperScan;
+
 import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,47 +27,56 @@ import java.util.List;
 @MapperScan(value = "tk.mybatis.mapper.annotation",
 	basePackages = "cn.comtom.app.standard.component.quartz.mapper",
 	markerInterface = JobMapper.class,
-	mapperHelperRef = "quartzMapperHelper",
-	sqlSessionTemplateRef = "quartzSqlSessionTemplate"
+	mapperHelperRef = QuartzDataSourceConfig.QUARTZ_MAPPER_HELPER,
+	sqlSessionTemplateRef = QuartzDataSourceConfig.QUARTZ_SQL_SESSION_TEMPLATE
 )
 public class QuartzDataSourceConfig {
 
-	@Bean(name = "quartzDataSource")
+    public static final String QUARTZ_DATA_SOURCE = "quartzDataSource";
+
+    public static final String QUARTZ_TRANSACTION_MANAGER = "quartzTransactionManager";
+
+    public static final String QUART_SQL_SESSION_FACTORY = "quartSqlSessionFactory";
+
+    public static final String QUARTZ_MAPPER_HELPER = "quartzMapperHelper";
+
+    public static final String QUARTZ_SQL_SESSION_TEMPLATE = "quartzSqlSessionTemplate";
+
+	@Bean(name = QUARTZ_DATA_SOURCE)
     @ConfigurationProperties(prefix = "spring.datasource.quartz")
     public DataSource setDataSource() {
         return new HikariDataSource();
     }
 
-    @Bean(name = "quartzTransactionManager")
-    public DataSourceTransactionManager setTransactionManager(@Qualifier("quartzDataSource") DataSource dataSource) {
+    @Bean(name = QUARTZ_TRANSACTION_MANAGER)
+    public DataSourceTransactionManager setTransactionManager(@Qualifier(QUARTZ_DATA_SOURCE) DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
     }
 
-    @Bean(name = "quartSqlSessionFactory")
-    public SqlSessionFactory setSqlSessionFactory(@Qualifier("quartzDataSource") DataSource dataSource) throws Exception {
+    @Bean(name = QUART_SQL_SESSION_FACTORY)
+    public SqlSessionFactory setSqlSessionFactory(@Qualifier(QUARTZ_DATA_SOURCE) DataSource dataSource) throws Exception {
         SqlSessionFactoryBean bean = new SqlSessionFactoryBean();
         bean.setDataSource(dataSource);
         bean.setTypeAliasesPackage("cn.comtom.app.standard.component.quartz.model.dbo");
         bean.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mapper/**/*.xml"));
         org.apache.ibatis.session.Configuration conf = new org.apache.ibatis.session.Configuration();
         conf.setMapUnderscoreToCamelCase(true);
-        conf.setLogImpl(StdOutImpl.class);
+        conf.setLogImpl(Slf4jImpl.class);
         bean.setConfiguration(conf);
         return bean.getObject();
     }
 
-    @Bean(name = "quartzSqlSessionTemplate")
-    public SqlSessionTemplate setSqlSessionTemplate(@Qualifier("quartSqlSessionFactory") SqlSessionFactory sqlSessionFactory) throws Exception {
+    @Bean(name = QUARTZ_SQL_SESSION_TEMPLATE)
+    public SqlSessionTemplate setSqlSessionTemplate(@Qualifier(QUART_SQL_SESSION_FACTORY) SqlSessionFactory sqlSessionFactory) throws Exception {
         return new SqlSessionTemplate(sqlSessionFactory);
     }
 
-    @Bean
+    @Bean(QUARTZ_MAPPER_HELPER)
     public MapperHelper quartzMapperHelper() {
         Config config = new Config();
         List<Class> mappers = new ArrayList<Class>();
         mappers.add(JobMapper.class);
         config.setMappers(mappers);
-
         MapperHelper mapperHelper = new MapperHelper();
         mapperHelper.setConfig(config);
         return mapperHelper;

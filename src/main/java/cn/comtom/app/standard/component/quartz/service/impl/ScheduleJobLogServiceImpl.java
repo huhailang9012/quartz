@@ -14,8 +14,12 @@ import java.util.List;
 @Service("scheduleJobLogService")
 public class ScheduleJobLogServiceImpl implements ScheduleJobLogService {
 
+	private final ScheduleJobLogDao scheduleJobLogDao;
+
 	@Autowired
-	private ScheduleJobLogDao scheduleJobLogDao;
+	public ScheduleJobLogServiceImpl(ScheduleJobLogDao scheduleJobLogDao) {
+		this.scheduleJobLogDao = scheduleJobLogDao;
+	}
 
 	@Override
 	public ScheduleJobLog queryObject(Long jobId) {
